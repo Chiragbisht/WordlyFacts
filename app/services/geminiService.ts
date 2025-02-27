@@ -24,26 +24,28 @@ export async function getFactsForToday(): Promise<FactWithCategory[]> {
   const month = today.toLocaleString('default', { month: 'long' });
   const day = today.getDate();
 
-  const prompt = `Generate 8 VERIFIED facts about significant events that DEFINITIVELY occurred on ${month} ${day} in various years throughout history.
+  const prompt = `List 7-8 significant historical events that occurred on ${month} ${day}.
 
-    CRITICAL REQUIREMENTS:
-    1. ONLY include notable events that happened SPECIFICALLY on ${month} ${day} (day and month must match exactly).
-    2. Each fact MUST begin with the year to verify its historical accuracy.
-    3. Focus only on SIGNIFICANT historical events - no trivial facts.
-    4. Do NOT include any fictional events, unverified claims, or general facts.
-    5. Ensure the facts are globally diverse and from different time periods.
+    Requirements:
+    1. Focus primarily on:
+       - Scientific discoveries and innovations
+       - Technology breakthroughs
+       - Medical advancements
+       - Important historical events
+    2. Include 2-3 significant Indian historical events
+    3. Each fact must start with [YEAR] format
+    4. Only include verified historical events
     
-    GENERATE facts from these categories, balanced equally:
-    - SCIENCE: Science & Discovery facts (scientific breakthroughs, discoveries)
-    - TECH: Technology & Innovation facts (inventions, patents, tech milestones)
-    - HISTORY: History & Culture facts (political events, cultural milestones)
-    - ECONOMICS: Economics & Finance facts (important economic events)
-    - MEDICINE: Medicine & Health facts (medical breakthroughs, health developments)
-    
-    Format each fact as:
-    "CATEGORY: [Year] - Actual fact description"
+    Format:
+    CATEGORY: [YYYY] - Event description
+    For Indian events, start with "INDIA:"
 
-    For facts related to Indian history, start with "INDIA:" before the category, but don't prioritize Indian facts over important global events.`;
+    Categories to use:
+    SCIENCE, TECH, MEDICINE, HISTORY
+
+    Example:
+    "SCIENCE: [1953] - Watson and Crick announced DNA structure discovery"
+    "INDIA:TECH: [1975] - First Indian satellite launch"`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -88,31 +90,38 @@ export async function getFactsForToday(): Promise<FactWithCategory[]> {
       }
     }
     
-    // Sort primarily by category to ensure visual variety
-    const sortedFacts: FactWithCategory[] = [];
-    
-    // Add facts sorted by category to ensure visual variety
-    Object.values(CATEGORIES).forEach(category => {
-      const factsOfCategory = categorizedFacts.filter(fact => fact.category === category);
-      sortedFacts.push(...factsOfCategory);
+    // Additional verification: Only include facts with clear year markers
+    const verifiedFacts = categorizedFacts.filter(fact => {
+      const hasYear = fact.text.match(/\[\d{4}\]/);
+      const hasDetailedDescription = fact.text.length > 30; // Ensure fact has sufficient detail
+      return hasYear && hasDetailedDescription;
     });
-    
-    // Add any other facts that might have been categorized differently
-    categorizedFacts.forEach(fact => {
-      if (!sortedFacts.includes(fact)) {
-        sortedFacts.push(fact);
+
+    // Sort facts to ensure science/tech/medical appear first
+    const sortedFacts = verifiedFacts.sort((a, b) => {
+      // Prioritize Science, Tech, and Medicine categories
+      const priority: { [key: string]: number } = { 'Science': 1, 'Tech': 2, 'Medicine': 3 };
+      const priorityA = priority[a.category] || 4;
+      const priorityB = priority[b.category] || 4;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
       }
+      
+      // If same category, sort by year (most recent first)
+      const yearA = parseInt(a.text.match(/\[(\d{4})\]/)?.[1] || '0');
+      const yearB = parseInt(b.text.match(/\[(\d{4})\]/)?.[1] || '0');
+      return yearB - yearA;
     });
-    
-    // If we somehow have no valid facts, return a message
+
     if (sortedFacts.length === 0) {
       return [{
-        text: "Could not find verified facts for today's date. Please try refreshing.",
+        text: "No verified historical facts found for this specific date. Please try refreshing.",
         category: "Info",
         isIndian: false
       }];
     }
-    
+
     return sortedFacts;
   } catch (error) {
     console.error("Error fetching facts:", error);

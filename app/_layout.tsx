@@ -1,36 +1,27 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Stack, Redirect } from 'expo-router';
-import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import useAppFonts from './config/fonts';
 
-// Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // Load custom fonts
-  const [loaded] = useFonts({
-    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
-    'Poppins-Medium': require('../assets/fonts/Poppins-Medium.ttf'),
-  });
+  const [fontsLoaded] = useAppFonts();
 
   React.useEffect(() => {
-    if (loaded) {
-      // Hide splash screen once fonts are loaded
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded]);
 
-  // Show loading screen while fonts load
-  if (!loaded) {
+  if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: '#4a6fd8' }} />;
   }
 
-  // Return the root stack navigator
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="index" />
     </Stack>
   );
 }
